@@ -13,8 +13,8 @@ import torchaudio
 
 warnings.filterwarnings("ignore")
 
-# Default cache directory
-DEFAULT_CACHE_DIR = "/opt/data/Malaysian_ASR/model_cache"
+# Default cache directory - use local directory instead of /opt/data
+DEFAULT_CACHE_DIR = "./model_cache"
 
 
 def setup_directories(cache_dir: str = None):
@@ -69,19 +69,62 @@ def download_model(cache_dir: str = None):
         
         # Try to use transformers pipeline directly
         print("正在创建ASR pipeline...")
-        pipe = pipeline(
-            "automatic-speech-recognition",
-            model=model_name,
-            trust_remote_code=True,
-            cache_dir=cache_dir,
-            device=0 if device == "cuda" else -1
-        )
-        
-        print("✅ 模型下载和加载成功！")
-        return pipe, processor
+        try:
+            # For MERaLiON models, we need to use a different approach
+            # The standard pipeline doesn't work due to feature_extractor issues
+            print("⚠️  标准pipeline不适用于MERaLiON模型，使用替代方案...")
+            
+            # Instead of using pipeline, we'll load the model and processor separately
+            # This is the approach used in the working scripts
+            from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor as AutoProcessorClass
+            
+            # Load processor (reuse the one we already loaded if available)
+            if processor is None:
+                print("正在加载处理器...")
+                processor = AutoProcessorClass.from_pretrained(
+                    model_name,
+                    trust_remote_code=True,
+                    cache_dir=cache_dir
+                )
+            
+            # Load model using official approach (CPU vs GPU)
+            print("正在加载模型...")
+            if device == "cuda":
+                # GPU version from official code
+                model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                    model_name,
+                    use_safetensors=True,
+                    trust_remote_code=True,
+                    attn_implementation="flash_attention_2",
+                    torch_dtype=torch.bfloat16,
+                    cache_dir=cache_dir
+                ).to(device)
+            else:
+                # CPU version from official code
+                model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                    model_name,
+                    use_safetensors=True,
+                    trust_remote_code=True,
+                    cache_dir=cache_dir
+                )
+            
+            print("✅ 模型和处理器加载成功！")
+            print("注意: 使用直接加载方式而非pipeline")
+            return (model, processor), processor
+            
+        except Exception as pipeline_error:
+            print(f"⚠️  模型加载失败: {pipeline_error}")
+            print("模型文件已下载，但可能需要手动加载")
+            print("\n🔍 Full traceback:")
+            import traceback
+            traceback.print_exc()
+            return None, processor
         
     except Exception as e:
         print(f"❌ 下载失败: {e}")
+        print("\n🔍 Full traceback:")
+        import traceback
+        traceback.print_exc()
         print("\n尝试替代方案...")
         return download_alternative(cache_dir)
 
@@ -112,6 +155,9 @@ def download_alternative(cache_dir: str = None):
         
     except Exception as e:
         print(f"❌ 替代方案也失败了: {e}")
+        print("\n🔍 Full traceback:")
+        import traceback
+        traceback.print_exc()
         return None, None
 
 

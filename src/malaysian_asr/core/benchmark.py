@@ -11,8 +11,8 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 warnings.filterwarnings("ignore")
 
-# Default cache directory
-DEFAULT_CACHE_DIR = "/opt/data/Malaysian_ASR/model_cache"
+# Default cache directory - use local directory instead of /opt/data
+DEFAULT_CACHE_DIR = "./model_cache"
 
 
 class RTFBenchmark:
@@ -64,23 +64,24 @@ class RTFBenchmark:
             )
             processor_time = time.time() - processor_start
             
-            # Load model
+            # Load model using official approach (CPU vs GPU)
             model_start = time.time()
             if self.device == "cuda":
+                # GPU version from official code
                 self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
                     self.repo_id,
                     use_safetensors=True,
                     trust_remote_code=True,
-                    torch_dtype=torch_dtype,
-                    device_map="auto",
+                    attn_implementation="flash_attention_2",
+                    torch_dtype=torch.bfloat16,
                     cache_dir=self.cache_dir
-                )
+                ).to(self.device)
             else:
+                # CPU version from official code
                 self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
                     self.repo_id,
                     use_safetensors=True,
                     trust_remote_code=True,
-                    torch_dtype=torch_dtype,
                     cache_dir=self.cache_dir
                 )
             model_time = time.time() - model_start
@@ -137,7 +138,7 @@ class RTFBenchmark:
             
             inputs = self.processor(text=chat_prompt, audios=[audio_array])
             
-            # Move to device
+            # Move to device (official GPU approach)
             if self.device == "cuda":
                 for key, value in inputs.items():
                     if isinstance(value, torch.Tensor):

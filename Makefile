@@ -43,8 +43,11 @@ usage: check-os
 	@echo "    make benchmark"
 	@echo "        \033[90m- run RTF performance benchmark\033[0m"
 	@echo
+	@echo "    make check-deps"
+	@echo "        \033[90m- check dependency compatibility\033[0m"
+	@echo
 	@echo "    make download"
-	@echo "        \033[90m- download MERaLiON model\033[0m"
+	@echo "        \033[90m- download MERaLiON model (required for first use)\033[0m"
 	@echo
 	@echo "    make accuracy"
 	@echo "        \033[90m- calculate transcription accuracy\033[0m"
@@ -157,10 +160,45 @@ benchmark:
 		.ve3/bin/poetry run malaysian-asr-benchmark $(AUDIO_FILE); \
 	fi
 
+.PHONY: check-deps
+check-deps:
+	@echo "Checking dependency compatibility..."
+	@if [ ! -d ".ve3" ]; then \
+		echo "Error: Python environment not built. Please run 'make build' first."; \
+		exit 1; \
+	fi
+	@.ve3/bin/poetry run malaysian-asr-check-deps
+
 .PHONY: download
 download:
-	@echo "Downloading MERaLiON model"
+	@echo "Downloading MERaLiON model..."
+	@echo "This may take several minutes depending on your internet connection."
+	@echo "The model is approximately 20GB in size."
+	@echo ""
+	@if [ ! -d ".ve3" ]; then \
+		echo "Error: Python environment not built. Please run 'make build' first."; \
+		exit 1; \
+	fi
+	@echo "🔍 Checking dependencies first..."
+	@.ve3/bin/poetry run malaysian-asr-check-deps
+	@echo ""
+	@echo "🚀 Starting model download..."
 	@.ve3/bin/poetry run malaysian-asr-download
+	@echo ""
+	@echo "✅ Model download process completed!"
+	@echo ""
+	@echo "📁 Model files are stored in: ./model_cache"
+	@echo ""
+	@echo "🎯 You can now use the transcription commands:"
+	@echo "  make transcribe AUDIO_FILE=your_audio.wav"
+	@echo "  make batch DIRECTORY=/path/to/audio/directory"
+	@echo "  make benchmark AUDIO_FILE=your_audio.wav"
+	@echo ""
+	@echo "💡 Note: If pipeline creation failed, the model files are still"
+	@echo "   available and the transcription commands should work correctly."
+
+.PHONY: download-model
+download-model: download
 
 .PHONY: accuracy
 accuracy:

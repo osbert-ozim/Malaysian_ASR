@@ -217,3 +217,5 @@ __marimo__/
 
 .ve3/*
 !.ve3/pyvenv.cfg
+
+model_cache/

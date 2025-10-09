@@ -25,12 +25,12 @@ Malaysian_ASR/
 │       │   ├── *.txt files
 │       │   └── ...
 │       └── output/             # Output directory
-├── scripts/                    # Standalone scripts
-│   ├── transcribe.py
-│   ├── batch_transcribe.py
-│   ├── rtf_benchmark.py
-│   ├── download_model.py
-│   └── calculate_accuracy.py
+├── scripts/                    # Additional utility scripts
+│   ├── compare_transcripts.py
+│   ├── compare_transcripts_fixed.py
+│   ├── correct_inference.py
+│   ├── format_transcripts.py
+│   └── streaming_transcribe.py
 ├── pyproject.toml             # Poetry configuration
 └── README.md
 ```
@@ -89,27 +89,27 @@ malaysian-asr-download
 
 # Accuracy calculation
 malaysian-asr-accuracy
+
+# Check dependencies
+malaysian-asr-check-deps
 ```
 
-### Standalone Scripts
+### Additional Utility Scripts
 
-You can also use the standalone scripts in the `scripts/` directory:
+The `scripts/` directory contains additional utility scripts for specific tasks:
 
 ```bash
-# Single file transcription
-python scripts/transcribe.py audio.wav
+# Compare transcription results
+python scripts/compare_transcripts.py
 
-# Batch directory transcription
-python scripts/batch_transcribe.py /path/to/audio/directory
+# Format transcript files
+python scripts/format_transcripts.py
 
-# Performance benchmarking
-python scripts/rtf_benchmark.py audio.wav
+# Streaming transcription
+python scripts/streaming_transcribe.py
 
-# Model download
-python scripts/download_model.py
-
-# Accuracy calculation
-python scripts/calculate_accuracy.py
+# Correct inference with translation support
+python scripts/correct_inference.py audio.wav transcribe
 ```
 
 ## 🎵 Supported Audio Formats

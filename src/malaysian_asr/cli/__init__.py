@@ -5,11 +5,12 @@ Command-line interface for Malaysian ASR package.
 import os
 import sys
 from pathlib import Path
-from .core.transcriber import MERaLiONTranscriber
-from .core.batch_transcriber import BatchTranscriber
-from .core.benchmark import RTFBenchmark
-from .utils.accuracy import evaluate_accuracy
-from .utils.model_downloader import download_model, setup_directories
+from ..core.transcriber import MERaLiONTranscriber
+from ..core.batch_transcriber import BatchTranscriber
+from ..core.benchmark import RTFBenchmark
+from ..utils.accuracy import evaluate_accuracy
+from ..utils.model_downloader import download_model, setup_directories
+from ..utils.check_dependencies import main as check_dependencies_main
 
 
 def transcribe():
@@ -178,7 +179,7 @@ def download_model_cli():
     
     # Check disk space
     import shutil
-    cache_dir = "/opt/data/Malaysian_ASR/model_cache"
+    cache_dir = "./model_cache"
     total, used, free = shutil.disk_usage(cache_dir)
     print(f"可用磁盘空间: {free // (1024**3)} GB")
     
@@ -191,29 +192,55 @@ def download_model_cli():
     # Download model
     result = download_model()
     
-    if result[0] is not None:
+    if result[0] is not None or result[1] is not None:
         print("\n✅ 下载完成！")
         print(f"模型缓存位置: {cache_dir}")
         
-        # Check if there are audio files for testing
-        audio_files = [f for f in os.listdir('.') if f.endswith(('.wav', '.mp3', '.flac'))]
-        if audio_files:
-            print(f"发现音频文件: {audio_files}")
-            test_file = audio_files[0]
-            from .utils.model_downloader import test_audio_inference
-            test_audio_inference(result[0], test_file)
+        if result[0] is not None:
+            # Model was loaded successfully
+            print("✅ 模型和处理器加载成功！")
+            
+            # Check if result[0] is a tuple (model, processor) or a pipeline
+            if isinstance(result[0], tuple):
+                model, processor = result[0]
+                print("📦 使用直接加载的模型和处理器")
+                print("✅ 模型已准备就绪，可以进行转录")
+            else:
+                # It's a pipeline
+                print("✅ Pipeline创建成功，可以进行推理测试")
+                
+                # Check if there are audio files for testing
+                audio_files = [f for f in os.listdir('.') if f.endswith(('.wav', '.mp3', '.flac'))]
+                if audio_files:
+                    print(f"发现音频文件: {audio_files}")
+                    test_file = audio_files[0]
+                    from .utils.model_downloader import test_audio_inference
+                    test_audio_inference(result[0], test_file)
+                else:
+                    print("没有找到音频文件进行测试")
+                    from .utils.model_downloader import create_simple_test
+                    test_file = create_simple_test()
+                    if test_file:
+                        test_audio_inference(result[0], test_file)
         else:
-            print("没有找到音频文件进行测试")
-            from .utils.model_downloader import create_simple_test
-            test_file = create_simple_test()
-            if test_file:
-                test_audio_inference(result[0], test_file)
+            # Only model files downloaded, model loading failed
+            print("⚠️  模型文件已下载，但模型加载失败")
+            print("这可能是由于transformers版本兼容性问题")
+            print("模型文件位置: ./model_cache")
+            print("您可以尝试使用以下命令进行转录:")
+            print("  make transcribe AUDIO_FILE=your_audio.wav")
+            print("  make batch DIRECTORY=/path/to/audio/directory")
     else:
         print("❌ 下载失败")
         print("\n可能的解决方案:")
         print("1. 检查网络连接")
         print("2. 确保有足够的磁盘空间")
         print("3. 尝试使用VPN或镜像源")
+
+
+def check_dependencies():
+    """CLI entry point for dependency checking."""
+    check_dependencies_main()
 
 
 def calculate_accuracy_cli():
@@ -227,8 +254,8 @@ def calculate_accuracy_cli():
         subprocess.check_call([sys.executable, "-m", "pip", "install", "jieba"])
         import jieba
     
-    reference_file = "/opt/data/Malaysian_ASR/test_sample_transcribe_result.txt"
-    hypothesis_file = "/opt/data/Malaysian_ASR/vocals_only_mono_transcripts_formatted.txt"
+    reference_file = "./src/malaysian_asr/data/test_sample_transcribe_result.txt"
+    hypothesis_file = "./src/malaysian_asr/data/vocals_only_mono_transcripts_formatted.txt"
     
     result = evaluate_accuracy(reference_file, hypothesis_file)
     

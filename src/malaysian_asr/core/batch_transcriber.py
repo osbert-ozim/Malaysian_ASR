@@ -43,7 +43,7 @@ class BatchTranscriber(MERaLiONTranscriber):
             
             inputs = self.processor(text=chat_prompt, audios=[audio_array])
             
-            # Move to device
+            # Move to device (official GPU approach)
             if self.device == "cuda":
                 for key, value in inputs.items():
                     if isinstance(value, torch.Tensor):
