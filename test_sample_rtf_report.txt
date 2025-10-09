@@ -1,0 +1,2 @@
+MERaLiON-2-10B-ASR RTF性能报告\n==================================================\n音频文件: test_sample.wav\n音频时长: 10.60秒\n预处理时间: 0.022秒\n平均推理时间: 3.027秒\n总处理时间: 3.049秒\n纯推理RTF: 0.286\n总处理RTF: 0.288\n转录结果: <Speaker1>: Yes, exactly correct. Okay ya, but just before that no problem. Can I check Supria? Actually, does your child have any tuition for math at the moment?
+\n
