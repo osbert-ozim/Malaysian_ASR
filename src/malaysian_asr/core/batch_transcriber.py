@@ -1,99 +1,40 @@
-#!/usr/bin/env python3
 """
-MERaLiON-2-10B-ASR 批量目录转录脚本
-对指定目录下的所有音频文件进行转录
-输出格式: 音频文件名|转录结果
+Batch transcriber module for processing multiple audio files.
 """
 
 import os
-import sys
-import torch
-import librosa
-import warnings
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
-from pathlib import Path
 import time
+from pathlib import Path
+from .transcriber import MERaLiONTranscriber
 
-warnings.filterwarnings("ignore")
 
-# 设置缓存目录
-CACHE_DIR = "/opt/data/Malaysian_ASR/model_cache"
-os.environ["HF_HOME"] = CACHE_DIR
-os.environ["TRANSFORMERS_CACHE"] = CACHE_DIR
-
-class BatchTranscriber:
-    def __init__(self):
-        self.model = None
-        self.processor = None
-        self.device = None
-        self.repo_id = "MERaLiON/MERaLiON-2-10B-ASR"
+class BatchTranscriber(MERaLiONTranscriber):
+    """Batch transcriber for processing directories of audio files."""
     
-    def load_model(self):
-        """加载转录模型"""
-        print("🚀 正在加载MERaLiON转录模型...")
+    def transcribe_single(self, audio_path: str) -> tuple:
+        """
+        Transcribe a single audio file (internal method).
         
+        Args:
+            audio_path: Path to the audio file
+            
+        Returns:
+            Tuple of (transcription_result, duration) or (None, 0) if failed
+        """
         try:
-            # 检测设备
-            if torch.cuda.is_available():
-                print("✅ 使用GPU加速")
-                self.device = "cuda"
-                torch_dtype = torch.bfloat16
-            else:
-                print("💻 使用CPU模式")
-                self.device = "cpu"
-                torch_dtype = torch.float32
-            
-            # 加载处理器
-            print("📥 加载处理器...")
-            self.processor = AutoProcessor.from_pretrained(
-                self.repo_id, 
-                trust_remote_code=True,
-                cache_dir=CACHE_DIR
-            )
-            
-            # 加载模型
-            print("📥 加载模型...")
-            if self.device == "cuda":
-                self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                    self.repo_id,
-                    use_safetensors=True,
-                    trust_remote_code=True,
-                    torch_dtype=torch_dtype,
-                    device_map="auto",
-                    cache_dir=CACHE_DIR
-                )
-            else:
-                self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                    self.repo_id,
-                    use_safetensors=True,
-                    trust_remote_code=True,
-                    torch_dtype=torch_dtype,
-                    cache_dir=CACHE_DIR
-                )
-            
-            print("✅ 模型加载完成！")
-            return True
-            
-        except Exception as e:
-            print(f"❌ 模型加载失败: {e}")
-            return False
-    
-    def transcribe_single(self, audio_path):
-        """转录单个音频文件"""
-        try:
-            # 加载音频 (16kHz)
+            # Load audio (16kHz)
             audio_array, sample_rate = librosa.load(audio_path, sr=16000)
             duration = len(audio_array) / 16000
             
-            # 转录专用提示词
+            # Transcription prompt
             prompt_template = "Instruction: Please transcribe this speech. \\nFollow the text instruction based on the following audio: <SpeechHere>"
             
-            # 创建对话格式
+            # Create conversation format
             conversation = [
                 [{"role": "user", "content": prompt_template}]
             ]
             
-            # 处理输入
+            # Process input
             chat_prompt = self.processor.tokenizer.apply_chat_template(
                 conversation=conversation,
                 tokenize=False,
@@ -102,7 +43,7 @@ class BatchTranscriber:
             
             inputs = self.processor(text=chat_prompt, audios=[audio_array])
             
-            # 移动到设备
+            # Move to device
             if self.device == "cuda":
                 for key, value in inputs.items():
                     if isinstance(value, torch.Tensor):
@@ -110,7 +51,7 @@ class BatchTranscriber:
                         if value.dtype == torch.float32:
                             inputs[key] = inputs[key].to(torch.bfloat16)
             
-            # 生成转录结果
+            # Generate transcription
             with torch.no_grad():
                 outputs = self.model.generate(
                     **inputs, 
@@ -119,15 +60,15 @@ class BatchTranscriber:
                     pad_token_id=self.processor.tokenizer.eos_token_id
                 )
             
-            # 解码结果
+            # Decode result
             generated_ids = outputs[:, inputs['input_ids'].size(1):]
             response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
             
             result = response[0] if response else ""
             
-            # 清理结果（去掉多余的空白和换行）
+            # Clean result (remove extra whitespace and newlines)
             result = result.strip().replace('\\n', ' ').replace('\\r', ' ')
-            while '  ' in result:  # 去掉多余空格
+            while '  ' in result:  # Remove extra spaces
                 result = result.replace('  ', ' ')
             
             return result, duration
@@ -136,13 +77,18 @@ class BatchTranscriber:
             print(f"❌ 转录失败 {audio_path}: {e}")
             return None, 0
     
-    def batch_transcribe_directory(self, directory_path, output_file):
-        """批量转录目录下的音频文件"""
+    def batch_transcribe_directory(self, directory_path: str, output_file: str):
+        """
+        Batch transcribe all audio files in a directory.
         
-        # 支持的音频格式
+        Args:
+            directory_path: Path to directory containing audio files
+            output_file: Path to output file for results
+        """
+        # Supported audio formats
         audio_extensions = ['.wav', '.mp3', '.flac', '.m4a', '.ogg', '.wma']
         
-        # 查找所有音频文件
+        # Find all audio files
         audio_files = []
         directory = Path(directory_path)
         
@@ -159,13 +105,13 @@ class BatchTranscriber:
             print(f"支持的格式: {', '.join(audio_extensions)}")
             return
         
-        # 按文件名排序
+        # Sort by filename
         audio_files = sorted(audio_files)
         
         print(f"📁 找到 {len(audio_files)} 个音频文件")
         print(f"📝 结果将保存到: {output_file}")
         
-        # 开始批量转录
+        # Start batch transcription
         results = []
         total_duration = 0
         successful_count = 0
@@ -176,36 +122,36 @@ class BatchTranscriber:
         for i, audio_file in enumerate(audio_files, 1):
             print(f"\\n🎵 [{i:3d}/{len(audio_files)}] 正在处理: {audio_file.name}")
             
-            # 转录
+            # Transcribe
             transcribe_start = time.time()
             result, duration = self.transcribe_single(str(audio_file))
             transcribe_time = time.time() - transcribe_start
             
             if result is not None:
-                # 成功转录
+                # Successful transcription
                 successful_count += 1
                 total_duration += duration
                 
-                # 只保留文件名（不含路径）
+                # Keep only filename (without path)
                 filename = audio_file.name
                 
-                # 格式: 音频文件名|转录结果
+                # Format: audio_filename|transcription_result
                 line = f"{filename}|{result}"
                 results.append(line)
                 
-                # 显示结果
+                # Show result
                 print(f"   ✅ ({duration:.1f}s, {transcribe_time:.2f}s) {result[:100]}{'...' if len(result) > 100 else ''}")
                 
-                # 实时保存（防止程序中断丢失结果）
+                # Real-time save (prevent data loss if program is interrupted)
                 with open(output_file, 'w', encoding='utf-8') as f:
                     for line in results:
                         f.write(line + '\\n')
             else:
-                # 转录失败
+                # Transcription failed
                 failed_files.append(audio_file.name)
                 print(f"   ❌ 转录失败")
         
-        # 最终统计
+        # Final statistics
         total_time = time.time() - start_time
         
         print(f"\\n{'='*60}")
@@ -226,7 +172,7 @@ class BatchTranscriber:
             else:
                 print(f"   ⏳ 平均速度: 比实时慢 {rtf:.1f}x")
         
-        # 显示失败的文件
+        # Show failed files
         if failed_files:
             print(f"\\n❌ 转录失败的文件:")
             for filename in failed_files:
@@ -234,44 +180,3 @@ class BatchTranscriber:
         
         print(f"\\n💾 所有结果已保存到: {output_file}")
         print(f"格式: 音频文件名|转录结果")
-
-def main():
-    """主函数"""
-    print("=" * 70)
-    print("📁 MERaLiON 批量目录转录器")
-    print("=" * 70)
-    
-    # 检查命令行参数
-    if len(sys.argv) < 2:
-        print("用法:")
-        print("  python batch_transcribe.py <音频目录> [输出文件.txt]")
-        print("\\n示例:")
-        print("  python batch_transcribe.py /opt/data/vocals_only_mono")
-        print("  python batch_transcribe.py /opt/data/vocals_only_mono results.txt")
-        return
-    
-    directory_path = sys.argv[1]
-    
-    # 输出文件名
-    if len(sys.argv) > 2:
-        output_file = sys.argv[2]
-    else:
-        # 默认输出文件名
-        dir_name = Path(directory_path).name
-        output_file = f"{dir_name}_transcripts.txt"
-    
-    print(f"📁 音频目录: {directory_path}")
-    print(f"📝 输出文件: {output_file}")
-    
-    # 初始化转录器
-    transcriber = BatchTranscriber()
-    
-    # 加载模型
-    if not transcriber.load_model():
-        return
-    
-    # 开始批量转录
-    transcriber.batch_transcribe_directory(directory_path, output_file)
-
-if __name__ == "__main__":
-    main()

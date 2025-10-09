@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
 """
-MERaLiON-2-10B-ASR RTF性能测试脚本
-测试转录的实时性能指标
+RTF (Real-Time Factor) benchmark module for performance testing.
 """
 
 import os
-import sys
 import time
 import torch
 import librosa
@@ -14,21 +11,33 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 warnings.filterwarnings("ignore")
 
-# 设置缓存目录
-CACHE_DIR = "/opt/data/Malaysian_ASR/model_cache"
-os.environ["HF_HOME"] = CACHE_DIR
-os.environ["TRANSFORMERS_CACHE"] = CACHE_DIR
+# Default cache directory
+DEFAULT_CACHE_DIR = "/opt/data/Malaysian_ASR/model_cache"
+
 
 class RTFBenchmark:
-    def __init__(self):
+    """RTF performance testing for MERaLiON-2-10B-ASR model."""
+    
+    def __init__(self, cache_dir: str = None):
+        """
+        Initialize the benchmark.
+        
+        Args:
+            cache_dir: Directory to cache the model files
+        """
         self.model = None
         self.processor = None
         self.device = None
         self.repo_id = "MERaLiON/MERaLiON-2-10B-ASR"
         self.model_loaded = False
+        self.cache_dir = cache_dir or DEFAULT_CACHE_DIR
+        
+        # Set environment variables
+        os.environ["HF_HOME"] = self.cache_dir
+        os.environ["TRANSFORMERS_CACHE"] = self.cache_dir
     
     def load_model(self):
-        """加载模型并计时"""
+        """Load the model and time the process."""
         if self.model_loaded:
             return True
             
@@ -36,7 +45,7 @@ class RTFBenchmark:
         load_start = time.time()
         
         try:
-            # 检测设备
+            # Detect device
             if torch.cuda.is_available():
                 print("✅ 使用GPU加速")
                 self.device = "cuda"
@@ -46,16 +55,16 @@ class RTFBenchmark:
                 self.device = "cpu"
                 torch_dtype = torch.float32
             
-            # 加载处理器
+            # Load processor
             processor_start = time.time()
             self.processor = AutoProcessor.from_pretrained(
                 self.repo_id, 
                 trust_remote_code=True,
-                cache_dir=CACHE_DIR
+                cache_dir=self.cache_dir
             )
             processor_time = time.time() - processor_start
             
-            # 加载模型
+            # Load model
             model_start = time.time()
             if self.device == "cuda":
                 self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
@@ -64,7 +73,7 @@ class RTFBenchmark:
                     trust_remote_code=True,
                     torch_dtype=torch_dtype,
                     device_map="auto",
-                    cache_dir=CACHE_DIR
+                    cache_dir=self.cache_dir
                 )
             else:
                 self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
@@ -72,7 +81,7 @@ class RTFBenchmark:
                     use_safetensors=True,
                     trust_remote_code=True,
                     torch_dtype=torch_dtype,
-                    cache_dir=CACHE_DIR
+                    cache_dir=self.cache_dir
                 )
             model_time = time.time() - model_start
             
@@ -90,12 +99,21 @@ class RTFBenchmark:
             print(f"❌ 模型加载失败: {e}")
             return False
     
-    def benchmark_transcription(self, audio_path, num_runs=3):
-        """测试转录性能并计算RTF"""
+    def benchmark_transcription(self, audio_path: str, num_runs: int = 3) -> dict:
+        """
+        Test transcription performance and calculate RTF.
+        
+        Args:
+            audio_path: Path to the audio file
+            num_runs: Number of runs for averaging
+            
+        Returns:
+            Dictionary containing performance metrics
+        """
         try:
             print(f"\\n🎵 性能测试: {audio_path}")
             
-            # 加载音频
+            # Load audio
             audio_load_start = time.time()
             audio_array, sample_rate = librosa.load(audio_path, sr=16000)
             audio_load_time = time.time() - audio_load_start
@@ -104,7 +122,7 @@ class RTFBenchmark:
             print(f"   📊 音频时长: {audio_duration:.2f}秒")
             print(f"   📥 音频加载时间: {audio_load_time:.3f}秒")
             
-            # 准备输入（只做一次）
+            # Prepare input (only once)
             prompt_template = "Instruction: Please transcribe this speech. \\nFollow the text instruction based on the following audio: <SpeechHere>"
             conversation = [
                 [{"role": "user", "content": prompt_template}]
@@ -119,7 +137,7 @@ class RTFBenchmark:
             
             inputs = self.processor(text=chat_prompt, audios=[audio_array])
             
-            # 移动到设备
+            # Move to device
             if self.device == "cuda":
                 for key, value in inputs.items():
                     if isinstance(value, torch.Tensor):
@@ -130,7 +148,7 @@ class RTFBenchmark:
             preprocessing_time = time.time() - preprocessing_start
             print(f"   🔄 预处理时间: {preprocessing_time:.3f}秒")
             
-            # 多次运行测试
+            # Multiple runs for testing
             inference_times = []
             results = []
             
@@ -139,7 +157,7 @@ class RTFBenchmark:
             for i in range(num_runs):
                 print(f"   第 {i+1}/{num_runs} 次推理...")
                 
-                # 推理计时
+                # Inference timing
                 inference_start = time.time()
                 
                 with torch.no_grad():
@@ -153,7 +171,7 @@ class RTFBenchmark:
                 inference_time = time.time() - inference_start
                 inference_times.append(inference_time)
                 
-                # 解码结果（不计入推理时间）
+                # Decode result (not counted in inference time)
                 generated_ids = outputs[:, inputs['input_ids'].size(1):]
                 response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
                 result = response[0] if response else "转录失败"
@@ -161,21 +179,21 @@ class RTFBenchmark:
                 
                 print(f"      ⏱️  推理时间: {inference_time:.3f}秒")
             
-            # 计算统计数据
+            # Calculate statistics
             avg_inference_time = sum(inference_times) / len(inference_times)
             min_inference_time = min(inference_times)
             max_inference_time = max(inference_times)
             
-            # 计算RTF
+            # Calculate RTF
             avg_rtf = avg_inference_time / audio_duration
             min_rtf = min_inference_time / audio_duration
             max_rtf = max_inference_time / audio_duration
             
-            # 总处理时间（包括预处理）
+            # Total processing time (including preprocessing)
             total_processing_time = preprocessing_time + avg_inference_time
             total_rtf = total_processing_time / audio_duration
             
-            # 显示结果
+            # Display results
             print(f"\\n📈 性能统计报告:")
             print(f"   🎵 音频时长: {audio_duration:.2f}秒")
             print(f"   🔄 预处理时间: {preprocessing_time:.3f}秒")
@@ -187,7 +205,7 @@ class RTFBenchmark:
             print(f"   🎯 总处理RTF: {total_rtf:.3f}")
             print(f"")
             
-            # RTF解读
+            # RTF interpretation
             if total_rtf < 1.0:
                 speed_desc = f"比实时快 {1/total_rtf:.1f}x"
                 performance = "🚀 优秀"
@@ -218,58 +236,3 @@ class RTFBenchmark:
         except Exception as e:
             print(f"❌ 性能测试失败: {e}")
             return None
-
-def main():
-    """主函数"""
-    print("=" * 70)
-    print("⚡ MERaLiON-2-10B-ASR RTF性能测试")
-    print("=" * 70)
-    
-    # 检查命令行参数
-    if len(sys.argv) < 2:
-        audio_files = [f for f in os.listdir('.') 
-                      if f.lower().endswith(('.wav', '.mp3', '.flac', '.m4a'))]
-        
-        if not audio_files:
-            print("用法: python rtf_benchmark.py <音频文件>")
-            return
-        
-        audio_file = audio_files[0]
-        print(f"🔍 使用发现的音频文件: {audio_file}")
-    else:
-        audio_file = sys.argv[1]
-    
-    if not os.path.exists(audio_file):
-        print(f"❌ 音频文件不存在: {audio_file}")
-        return
-    
-    # 初始化测试器
-    benchmark = RTFBenchmark()
-    
-    # 加载模型
-    if not benchmark.load_model():
-        return
-    
-    # 运行性能测试
-    num_runs = 3 if len(sys.argv) < 3 else int(sys.argv[2])
-    result = benchmark.benchmark_transcription(audio_file, num_runs)
-    
-    if result:
-        # 保存测试报告
-        report_file = f"{audio_file.rsplit('.', 1)[0]}_rtf_report.txt"
-        with open(report_file, 'w', encoding='utf-8') as f:
-            f.write(f"MERaLiON-2-10B-ASR RTF性能报告\\n")
-            f.write(f"{'='*50}\\n")
-            f.write(f"音频文件: {audio_file}\\n")
-            f.write(f"音频时长: {result['audio_duration']:.2f}秒\\n")
-            f.write(f"预处理时间: {result['preprocessing_time']:.3f}秒\\n")
-            f.write(f"平均推理时间: {result['avg_inference_time']:.3f}秒\\n")
-            f.write(f"总处理时间: {result['total_processing_time']:.3f}秒\\n")
-            f.write(f"纯推理RTF: {result['rtf_inference']:.3f}\\n")
-            f.write(f"总处理RTF: {result['rtf_total']:.3f}\\n")
-            f.write(f"转录结果: {result['transcription']}\\n")
-        
-        print(f"\\n💾 性能报告已保存: {report_file}")
-
-if __name__ == "__main__":
-    main()
