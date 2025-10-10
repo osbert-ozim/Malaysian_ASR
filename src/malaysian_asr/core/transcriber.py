@@ -3,6 +3,7 @@ Core transcriber module for MERaLiON-2-10B-ASR model.
 """
 
 import os
+import time
 import torch
 import librosa
 import warnings
@@ -98,9 +99,14 @@ class MERaLiONTranscriber:
         try:
             print(f"🎵 正在转录: {audio_path}")
             
+            # Start timing
+            start_time = time.time()
+            
             # Load audio (16kHz)
+            audio_load_start = time.time()
             audio_array, sample_rate = librosa.load(audio_path, sr=16000)
             duration = len(audio_array) / 16000
+            audio_load_time = time.time() - audio_load_start
             print(f"   ⏱️  时长: {duration:.2f}秒")
             
             # Transcription prompt
@@ -112,6 +118,7 @@ class MERaLiONTranscriber:
             ]
             
             # Process input
+            preprocessing_start = time.time()
             chat_prompt = self.processor.tokenizer.apply_chat_template(
                 conversation=conversation,
                 tokenize=False,
@@ -128,8 +135,11 @@ class MERaLiONTranscriber:
                         if value.dtype == torch.float32:
                             inputs[key] = inputs[key].to(torch.bfloat16)
             
+            preprocessing_time = time.time() - preprocessing_start
+            
             # Generate transcription
             print("   🧠 正在转录...")
+            inference_start = time.time()
             with torch.no_grad():
                 outputs = self.model.generate(
                     **inputs, 
@@ -138,12 +148,28 @@ class MERaLiONTranscriber:
                     pad_token_id=self.processor.tokenizer.eos_token_id
                 )
             
+            inference_time = time.time() - inference_start
+            
             # Decode result
+            decode_start = time.time()
             generated_ids = outputs[:, inputs['input_ids'].size(1):]
             response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+            decode_time = time.time() - decode_start
             
             result = response[0] if response else "转录失败"
+            
+            # Calculate total processing time and RTF
+            total_time = time.time() - start_time
+            rtf = total_time / duration
+            
             print(f"✅ 转录完成: {result}")
+            print(f"   ⏱️  处理时间: {total_time:.3f}秒")
+            print(f"   📊 实时因子 (RTF): {rtf:.3f}")
+            print(f"   🔍 详细时间:")
+            print(f"      - 音频加载: {audio_load_time:.3f}秒")
+            print(f"      - 预处理: {preprocessing_time:.3f}秒")
+            print(f"      - 推理: {inference_time:.3f}秒")
+            print(f"      - 解码: {decode_time:.3f}秒")
             
             return result
             

@@ -213,11 +213,12 @@ file2.wav|transcription result 2
 
 ## 🎯 Best Practices
 
-1. **First Use**: Run `malaysian-asr-download` to download the model
-2. **Daily Transcription**: Use `malaysian-asr-transcribe your_audio.wav`
-3. **Batch Processing**: Use `malaysian-asr-batch /path/to/directory`
-4. **Performance Testing**: Use `malaysian-asr-benchmark` to evaluate performance
-5. **Accuracy Evaluation**: Prepare reference answers and use `malaysian-asr-accuracy`
+1. **First Use**: Run `make download` to download the model
+2. **Daily Transcription**: Use `make transcribe AUDIO_FILE=your_audio.wav`
+3. **Batch Processing**: Use `make batch DIRECTORY=/path/to/directory`
+4. **Performance Testing**: Use `make benchmark AUDIO_FILE=your_audio.wav` to evaluate performance
+5. **Accuracy Evaluation**: Prepare reference answers and use `make accuracy`
+6. **Dependency Check**: Use `make check-deps` to verify environment setup
 
 ## 📞 Technical Support
 

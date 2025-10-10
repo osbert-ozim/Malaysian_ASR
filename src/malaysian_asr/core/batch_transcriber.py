@@ -4,6 +4,8 @@ Batch transcriber module for processing multiple audio files.
 
 import os
 import time
+import torch
+import librosa
 from pathlib import Path
 from .transcriber import MERaLiONTranscriber
 
@@ -19,12 +21,17 @@ class BatchTranscriber(MERaLiONTranscriber):
             audio_path: Path to the audio file
             
         Returns:
-            Tuple of (transcription_result, duration) or (None, 0) if failed
+            Tuple of (transcription_result, duration, timing_info) or (None, 0, None) if failed
         """
         try:
+            # Start timing
+            start_time = time.time()
+            
             # Load audio (16kHz)
+            audio_load_start = time.time()
             audio_array, sample_rate = librosa.load(audio_path, sr=16000)
             duration = len(audio_array) / 16000
+            audio_load_time = time.time() - audio_load_start
             
             # Transcription prompt
             prompt_template = "Instruction: Please transcribe this speech. \\nFollow the text instruction based on the following audio: <SpeechHere>"
@@ -35,6 +42,7 @@ class BatchTranscriber(MERaLiONTranscriber):
             ]
             
             # Process input
+            preprocessing_start = time.time()
             chat_prompt = self.processor.tokenizer.apply_chat_template(
                 conversation=conversation,
                 tokenize=False,
@@ -51,7 +59,10 @@ class BatchTranscriber(MERaLiONTranscriber):
                         if value.dtype == torch.float32:
                             inputs[key] = inputs[key].to(torch.bfloat16)
             
+            preprocessing_time = time.time() - preprocessing_start
+            
             # Generate transcription
+            inference_start = time.time()
             with torch.no_grad():
                 outputs = self.model.generate(
                     **inputs, 
@@ -60,9 +71,13 @@ class BatchTranscriber(MERaLiONTranscriber):
                     pad_token_id=self.processor.tokenizer.eos_token_id
                 )
             
+            inference_time = time.time() - inference_start
+            
             # Decode result
+            decode_start = time.time()
             generated_ids = outputs[:, inputs['input_ids'].size(1):]
             response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+            decode_time = time.time() - decode_start
             
             result = response[0] if response else ""
             
@@ -71,11 +86,24 @@ class BatchTranscriber(MERaLiONTranscriber):
             while '  ' in result:  # Remove extra spaces
                 result = result.replace('  ', ' ')
             
-            return result, duration
+            # Calculate timing information
+            total_time = time.time() - start_time
+            rtf = total_time / duration
+            
+            timing_info = {
+                'total_time': total_time,
+                'audio_load_time': audio_load_time,
+                'preprocessing_time': preprocessing_time,
+                'inference_time': inference_time,
+                'decode_time': decode_time,
+                'rtf': rtf
+            }
+            
+            return result, duration, timing_info
             
         except Exception as e:
             print(f"❌ 转录失败 {audio_path}: {e}")
-            return None, 0
+            return None, 0, None
     
     def batch_transcribe_directory(self, directory_path: str, output_file: str):
         """
@@ -123,11 +151,9 @@ class BatchTranscriber(MERaLiONTranscriber):
             print(f"\\n🎵 [{i:3d}/{len(audio_files)}] 正在处理: {audio_file.name}")
             
             # Transcribe
-            transcribe_start = time.time()
-            result, duration = self.transcribe_single(str(audio_file))
-            transcribe_time = time.time() - transcribe_start
+            result, duration, timing_info = self.transcribe_single(str(audio_file))
             
-            if result is not None:
+            if result is not None and timing_info is not None:
                 # Successful transcription
                 successful_count += 1
                 total_duration += duration
@@ -139,8 +165,10 @@ class BatchTranscriber(MERaLiONTranscriber):
                 line = f"{filename}|{result}"
                 results.append(line)
                 
-                # Show result
-                print(f"   ✅ ({duration:.1f}s, {transcribe_time:.2f}s) {result[:100]}{'...' if len(result) > 100 else ''}")
+                # Show result with detailed timing
+                print(f"   ✅ 时长: {duration:.1f}s | 处理: {timing_info['total_time']:.2f}s | RTF: {timing_info['rtf']:.3f}")
+                print(f"   📊 详细: 加载:{timing_info['audio_load_time']:.2f}s 预处理:{timing_info['preprocessing_time']:.2f}s 推理:{timing_info['inference_time']:.2f}s 解码:{timing_info['decode_time']:.2f}s")
+                print(f"   📝 结果: {result[:100]}{'...' if len(result) > 100 else ''}")
                 
                 # Real-time save (prevent data loss if program is interrupted)
                 with open(output_file, 'w', encoding='utf-8') as f:
