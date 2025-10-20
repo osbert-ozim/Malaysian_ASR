@@ -19,7 +19,14 @@ scipy = "^1.7.0"
 huggingface-hub = "^0.26.0,<1.0"
 accelerate = "^0.20.0"
 safetensors = "^0.4.3"
-flash_attn = "^0.2.0"
+
+# NOTE: flash-attn is intentionally NOT listed here because it must be built
+# against the already installed PyTorch in the active environment. Installing
+# it during Poetry's PEP-517 isolated build often fails with
+# "ModuleNotFoundError: No module named 'torch'". After running `make build`,
+# install it separately with either of the following commands:
+#   .ve3/bin/poetry run pip install flash-attn
+#   .ve3/bin/poetry run pip install flash-attn --no-build-isolation
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.17.1"

@@ -109,6 +109,12 @@ lock: .ve3/bin/poetry
 build-python-env: .ve3/bin/poetry
 	@echo "Installing dependencies with Poetry..."
 	@.ve3/bin/poetry install --with=dev
+	@echo "Attempting to install optional Flash Attention (flash-attn)..."
+	@.ve3/bin/poetry run python -c "import torch" >/dev/null 2>&1 && ( \
+		.ve3/bin/poetry run pip install flash-attn || \
+		.ve3/bin/poetry run pip install flash-attn --no-build-isolation || \
+		echo "Warning: flash-attn install failed; you can install it later with: .ve3/bin/poetry run pip install flash-attn"; \
+	) || echo "Skipping flash-attn install (PyTorch not available yet)"
 	@PYTHON_VERSION=$$(.ve3/bin/python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'); \
 	echo "$(shell pwd)/src" > .ve3/lib/python$$PYTHON_VERSION/site-packages/on.pth
 	@echo "Finished installing dependencies"
