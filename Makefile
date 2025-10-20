@@ -46,6 +46,9 @@ usage:
 	@echo "    make check-deps"
 	@echo "        \033[90m- check dependency compatibility\033[0m"
 	@echo
+	@echo "    make check-flash-attn"
+	@echo "        \033[90m- check Flash Attention availability and functionality\033[0m"
+	@echo
 	@echo "    make download"
 	@echo "        \033[90m- download MERaLiON model (required for first use)\033[0m"
 	@echo
@@ -238,6 +241,11 @@ lint:
 .PHONY: python
 python:
 	@.ve3/bin/poetry run python
+
+.PHONY: check-flash-attn
+check-flash-attn:
+	@echo "Checking Flash Attention availability..."
+	@.ve3/bin/poetry run python check_flash_attention.py
 
 .PHONY: check-os
 check-os:
