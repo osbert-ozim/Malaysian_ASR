@@ -20,7 +20,7 @@ all: usage
 help: usage
 
 .PHONY: usage
-usage: check-os
+usage:
 	@echo "\033[1m\033[93mMalaysian ASR Build System\033[0m"
 	@echo
 	@echo "\033[93mBackend (Python) workflow\033[0m"

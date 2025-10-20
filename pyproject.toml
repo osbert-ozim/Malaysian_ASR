@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "malaysian_asr", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.10,<4.0"
 torch = "^2.0.0"
 torchaudio = "^2.0.0"
 transformers = "4.50.1"
@@ -16,9 +16,10 @@ jieba = "^0.42.1"
 soundfile = "^0.12.0"
 numpy = "^1.21.0"
 scipy = "^1.7.0"
-huggingface-hub = "^0.16.0"
+huggingface-hub = "^0.26.0,<1.0"
 accelerate = "^0.20.0"
-safetensors = "^0.3.0"
+safetensors = "^0.4.3"
+flash_attn = "^0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.17.1"
@@ -37,7 +38,7 @@ malaysian-asr-download = "malaysian_asr.cli:download_model_cli"
 malaysian-asr-check-deps = "malaysian_asr.cli:check_dependencies"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core", "torch", "torchaudio"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
