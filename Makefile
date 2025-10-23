@@ -56,7 +56,10 @@ usage:
 	@echo "        \033[90m- start FastAPI server in production mode\033[0m"
 	@echo
 	@echo "    make test-api"
-	@echo "        \033[90m- test the FastAPI endpoints\033[0m"
+	@echo "        \033[90m- test the enhanced FastAPI endpoints\033[0m"
+	@echo
+	@echo "    make test-api-simple"
+	@echo "        \033[90m- test the basic FastAPI endpoints\033[0m"
 	@echo
 	@echo "    make download"
 	@echo "        \033[90m- download MERaLiON model (required for first use)\033[0m"
@@ -249,9 +252,9 @@ check-mypy-py3:
 
 .PHONY: lint
 lint:
-	@.ve3/bin/poetry run autoflake --in-place --recursive --remove-all-unused-imports src/ tests/
-	@.ve3/bin/poetry run isort src/ tests/
-	@.ve3/bin/poetry run black src/ tests/
+	@.ve3/bin/poetry run autoflake --in-place --recursive --remove-all-unused-imports src/
+	@.ve3/bin/poetry run isort src/
+	@.ve3/bin/poetry run black src/
 
 .PHONY: python
 python:
@@ -278,6 +281,12 @@ api-prod:
 .PHONY: test-api
 test-api:
 	@echo "Testing Malaysian ASR API..."
+	@echo "Make sure the API server is running with 'make api' in another terminal"
+	@.ve3/bin/poetry run python test_enhanced_api.py
+
+.PHONY: test-api-simple
+test-api-simple:
+	@echo "Testing Malaysian ASR API (simple version)..."
 	@echo "Make sure the API server is running with 'make api' in another terminal"
 	@.ve3/bin/poetry run python test_api.py
 
