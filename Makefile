@@ -49,6 +49,15 @@ usage:
 	@echo "    make check-flash-attn"
 	@echo "        \033[90m- check Flash Attention availability and functionality\033[0m"
 	@echo
+	@echo "    make api"
+	@echo "        \033[90m- start FastAPI server for transcription service\033[0m"
+	@echo
+	@echo "    make api-prod"
+	@echo "        \033[90m- start FastAPI server in production mode\033[0m"
+	@echo
+	@echo "    make test-api"
+	@echo "        \033[90m- test the FastAPI endpoints\033[0m"
+	@echo
 	@echo "    make download"
 	@echo "        \033[90m- download MERaLiON model (required for first use)\033[0m"
 	@echo
@@ -252,6 +261,25 @@ python:
 check-flash-attn:
 	@echo "Checking Flash Attention availability..."
 	@.ve3/bin/poetry run python check_flash_attention.py
+
+.PHONY: api
+api:
+	@echo "Starting Malaysian ASR API server..."
+	@echo "API will be available at: http://localhost:8000"
+	@echo "API docs at: http://localhost:8000/docs"
+	@echo "Press Ctrl+C to stop the server"
+	@.ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --reload
+
+.PHONY: api-prod
+api-prod:
+	@echo "Starting Malaysian ASR API server in production mode..."
+	@.ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --workers 4
+
+.PHONY: test-api
+test-api:
+	@echo "Testing Malaysian ASR API..."
+	@echo "Make sure the API server is running with 'make api' in another terminal"
+	@.ve3/bin/poetry run python test_api.py
 
 .PHONY: check-os
 check-os:
