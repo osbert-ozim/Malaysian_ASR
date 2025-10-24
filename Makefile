@@ -61,6 +61,9 @@ usage:
 	@echo "    make test-api-simple"
 	@echo "        \033[90m- test the basic FastAPI endpoints\033[0m"
 	@echo
+	@echo "    make vad-process"
+	@echo "        \033[90m- process long audio files using VAD and API\033[0m"
+	@echo
 	@echo "    make download"
 	@echo "        \033[90m- download MERaLiON model (required for first use)\033[0m"
 	@echo
@@ -271,12 +274,12 @@ api:
 	@echo "API will be available at: http://localhost:8000"
 	@echo "API docs at: http://localhost:8000/docs"
 	@echo "Press Ctrl+C to stop the server"
-	@.ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --reload
+	@PYTHONPATH=src .ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --reload
 
 .PHONY: api-prod
 api-prod:
 	@echo "Starting Malaysian ASR API server in production mode..."
-	@.ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --workers 4
+	@PYTHONPATH=src .ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --workers 4
 
 .PHONY: test-api
 test-api:
@@ -289,6 +292,17 @@ test-api-simple:
 	@echo "Testing Malaysian ASR API (simple version)..."
 	@echo "Make sure the API server is running with 'make api' in another terminal"
 	@.ve3/bin/poetry run python test_api.py
+
+.PHONY: vad-process
+vad-process:
+	@echo "VAD-based audio processing for long files"
+	@echo "Usage: make vad-process AUDIO_FILE=path/to/audio.wav [OUTPUT_FILE=output.txt] [API_URL=http://192.168.1.192:8000]"
+	@if [ -z "$(AUDIO_FILE)" ]; then \
+		echo "Error: Please specify AUDIO_FILE"; \
+		echo "Example: make vad-process AUDIO_FILE=src/malaysian_asr/data/client/3.wav"; \
+		exit 1; \
+	fi
+	@.ve3/bin/poetry run malaysian-asr-vad $(AUDIO_FILE) $(OUTPUT_FILE) $(API_URL)
 
 .PHONY: check-os
 check-os:

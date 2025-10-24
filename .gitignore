@@ -219,3 +219,6 @@ __marimo__/
 !.ve3/pyvenv.cfg
 
 model_cache/
+
+
+src/malaysian_asr/data/client/*

@@ -8,6 +8,7 @@ from pathlib import Path
 from ..core.transcriber import MERaLiONTranscriber
 from ..core.batch_transcriber import BatchTranscriber
 from ..core.benchmark import RTFBenchmark
+from ..core.vad_processor import AudioProcessor
 from ..utils.accuracy import evaluate_accuracy
 from ..utils.model_downloader import download_model, setup_directories
 from ..utils.check_dependencies import main as check_dependencies_main
@@ -266,3 +267,55 @@ def calculate_accuracy_cli():
         print(f"   字符准确率: {result['overall_char_accuracy']:.3f} ({result['overall_char_accuracy']*100:.1f}%)")
         print(f"   Word Error Rate: {result['wer']:.3f}")
         print(f"   评估文件数: {result['total_files']}")
+
+
+def vad_process():
+    """CLI entry point for VAD-based audio processing."""
+    print("=" * 70)
+    print("🎙️  MERaLiON VAD语音活动检测转录器")
+    print("=" * 70)
+    
+    # Check command line arguments
+    if len(sys.argv) < 2:
+        print("用法:")
+        print("  malaysian-asr-vad <音频文件> [输出文件.txt] [API_URL]")
+        print("\n示例:")
+        print("  malaysian-asr-vad audio.wav")
+        print("  malaysian-asr-vad audio.wav output.txt")
+        print("  malaysian-asr-vad audio.wav output.txt http://localhost:8000")
+        return
+    
+    audio_file = sys.argv[1]
+    
+    # Output filename
+    if len(sys.argv) > 2:
+        output_file = sys.argv[2]
+    else:
+        # Default output filename
+        base_name = Path(audio_file).stem
+        output_file = f"{base_name}.txt"
+    
+    # API URL
+    api_url = "http://192.168.1.192:8000"  # Default API URL
+    if len(sys.argv) > 3:
+        api_url = sys.argv[3]
+    
+    if not os.path.exists(audio_file):
+        print(f"❌ 音频文件不存在: {audio_file}")
+        return
+    
+    print(f"📁 音频文件: {audio_file}")
+    print(f"📝 输出文件: {output_file}")
+    print(f"🌐 API地址: {api_url}")
+    
+    # Initialize processor
+    processor = AudioProcessor(api_url=api_url)
+    
+    # Process audio file
+    result = processor.process_audio_file(audio_file, output_file)
+    
+    if result:
+        print(f"\n🎉 处理完成!")
+        print(f"📄 转录结果已保存到: {result}")
+    else:
+        print("\n❌ 处理失败")

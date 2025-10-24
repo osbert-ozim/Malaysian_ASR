@@ -22,6 +22,7 @@ safetensors = "^0.4.3"
 fastapi = "^0.104.0"
 uvicorn = "^0.24.0"
 python-multipart = "^0.0.6"
+webrtcvad = "^2.0.10"
 
 # NOTE: flash-attn is intentionally NOT listed here because it must be built
 # against the already installed PyTorch in the active environment. Installing
@@ -46,6 +47,7 @@ malaysian-asr-batch = "malaysian_asr.cli:batch_transcribe"
 malaysian-asr-benchmark = "malaysian_asr.cli:benchmark"
 malaysian-asr-download = "malaysian_asr.cli:download_model_cli"
 malaysian-asr-check-deps = "malaysian_asr.cli:check_dependencies"
+malaysian-asr-vad = "malaysian_asr.cli:vad_process"
 malaysian-asr-api = "malaysian_asr.api:app"
 
 [build-system]
