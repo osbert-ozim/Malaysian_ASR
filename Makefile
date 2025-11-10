@@ -271,15 +271,15 @@ check-flash-attn:
 .PHONY: api
 api:
 	@echo "Starting Malaysian ASR API server..."
-	@echo "API will be available at: http://localhost:8000"
-	@echo "API docs at: http://localhost:8000/docs"
+	@echo "API will be available at: http://localhost:54321"
+	@echo "API docs at: http://localhost:54321/docs"
 	@echo "Press Ctrl+C to stop the server"
-	@PYTHONPATH=src .ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --reload
+	@PYTHONPATH=src .ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 54321 --reload
 
 .PHONY: api-prod
 api-prod:
 	@echo "Starting Malaysian ASR API server in production mode..."
-	@PYTHONPATH=src .ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 8000 --workers 4
+	@PYTHONPATH=src .ve3/bin/poetry run uvicorn malaysian_asr.api:app --host 0.0.0.0 --port 54321 --workers 4
 
 .PHONY: test-api
 test-api:
@@ -296,7 +296,7 @@ test-api-simple:
 .PHONY: vad-process
 vad-process:
 	@echo "VAD-based audio processing for long files"
-	@echo "Usage: make vad-process AUDIO_FILE=path/to/audio.wav [OUTPUT_FILE=output.txt] [API_URL=http://192.168.1.192:8000]"
+	@echo "Usage: make vad-process AUDIO_FILE=path/to/audio.wav [OUTPUT_FILE=output.txt] [API_URL=http://192.168.1.41:54321]"
 	@if [ -z "$(AUDIO_FILE)" ]; then \
 		echo "Error: Please specify AUDIO_FILE"; \
 		echo "Example: make vad-process AUDIO_FILE=src/malaysian_asr/data/client/3.wav"; \

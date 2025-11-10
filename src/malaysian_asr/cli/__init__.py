@@ -282,7 +282,7 @@ def vad_process():
         print("\n示例:")
         print("  malaysian-asr-vad audio.wav")
         print("  malaysian-asr-vad audio.wav output.txt")
-        print("  malaysian-asr-vad audio.wav output.txt http://localhost:8000")
+        print("  malaysian-asr-vad audio.wav output.txt http://localhost:54321")
         return
     
     audio_file = sys.argv[1]
@@ -296,7 +296,7 @@ def vad_process():
         output_file = f"{base_name}.txt"
     
     # API URL
-    api_url = "http://192.168.1.192:8000"  # Default API URL
+    api_url = "http://192.168.1.41:54321"  # Default API URL
     if len(sys.argv) > 3:
         api_url = sys.argv[3]
     

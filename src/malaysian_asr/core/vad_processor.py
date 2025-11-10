@@ -250,7 +250,7 @@ class VADProcessor:
 class AudioProcessor:
     """Main audio processor for VAD-based transcription."""
     
-    def __init__(self, api_url: str = "http://192.168.1.192:8000"):
+    def __init__(self, api_url: str = "http://192.168.1.41:54321"):
         """
         Initialize audio processor.
         
@@ -441,7 +441,7 @@ def main():
     parser = argparse.ArgumentParser(description="VAD-based audio processing for Malaysian ASR")
     parser.add_argument("audio_file", help="Path to input audio file")
     parser.add_argument("-o", "--output", help="Output transcript file path")
-    parser.add_argument("-u", "--url", default="http://192.168.1.192:8000", 
+    parser.add_argument("-u", "--url", default="http://192.168.1.41:54321", 
                        help="API server URL")
     
     args = parser.parse_args()
