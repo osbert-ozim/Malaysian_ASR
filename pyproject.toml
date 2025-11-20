@@ -1,0 +1,90 @@
+[tool.poetry]
+name = "malaysian-asr"
+version = "0.1.0"
+description = "MERaLiON-2-10B-ASR Malaysian Speech Recognition Package"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "malaysian_asr", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+torch = "^2.0.0"
+torchaudio = "^2.0.0"
+transformers = "4.50.1"
+librosa = "^0.10.0"
+jieba = "^0.42.1"
+soundfile = "^0.12.0"
+numpy = "^1.21.0"
+scipy = "^1.7.0"
+huggingface-hub = "^0.26.0,<1.0"
+accelerate = "^0.20.0"
+safetensors = "^0.4.3"
+fastapi = "^0.104.0"
+uvicorn = "^0.24.0"
+python-multipart = "^0.0.6"
+webrtcvad = "^2.0.10"
+
+# NOTE: flash-attn is intentionally NOT listed here because it must be built
+# against the already installed PyTorch in the active environment. Installing
+# it during Poetry's PEP-517 isolated build often fails with
+# "ModuleNotFoundError: No module named 'torch'". After running `make build`,
+# install it separately with either of the following commands:
+#   .ve3/bin/poetry run pip install flash-attn
+#   .ve3/bin/poetry run pip install flash-attn --no-build-isolation
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.17.1"
+pytest = "^8.4.1"
+ipython = "^8.37.0"
+isort = "^6.0.1"
+autoflake = "^2.3.1"
+black = "^25.1.0"
+types-requests = "^2.32.4.20250611"
+
+[tool.poetry.scripts]
+malaysian-asr-transcribe = "malaysian_asr.cli:transcribe"
+malaysian-asr-batch = "malaysian_asr.cli:batch_transcribe"
+malaysian-asr-benchmark = "malaysian_asr.cli:benchmark"
+malaysian-asr-download = "malaysian_asr.cli:download_model_cli"
+malaysian-asr-check-deps = "malaysian_asr.cli:check_dependencies"
+malaysian-asr-vad = "malaysian_asr.cli:vad_process"
+malaysian-asr-api = "malaysian_asr.api:app"
+
+[build-system]
+requires = ["poetry-core", "torch", "torchaudio"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "--capture=no"
+log_cli = "true"
+log_cli_level = "debug"
+log_format = "%(asctime)s.%(msecs)03d %(name)s [%(levelname)s] [%(filename)s:%(lineno)s %(funcName)s] %(message)s"
+log_date_format = "%Y-%m-%dT%H:%M:%S"
+filterwarnings = [
+    "ignore::pytest.PytestCollectionWarning"
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+packages = ["malaysian_asr"]
+mypy_path = "src"
+ignore_missing_imports = true
+allow_subclassing_any = true
